@@ -689,7 +689,7 @@ class BaseTxDialog(QDialog, MessageBoxMixin):
         self.rbf_label = TxDetailLabel()
         vbox_right.addWidget(self.rbf_label)
         self.rbf_cb = QCheckBox(_('Replace by fee'))
-        self.rbf_cb.setChecked(bool(self.config.get('use_rbf', True)))
+        self.rbf_cb.setChecked(bool(self.config.get('use_rbf', False)))
         vbox_right.addWidget(self.rbf_cb)
 
         self.locktime_final_label = TxDetailLabel()

@@ -432,7 +432,7 @@ class ElectrumWindow(App, Logger, EventListener):
         self.gui_object = kwargs.get('gui_object', None)  # type: ElectrumGui
         self.daemon = self.gui_object.daemon
         self.fx = self.daemon.fx
-        self.use_rbf = config.get('use_rbf', True)
+        self.use_rbf = config.get('use_rbf', False)
         self.use_gossip = config.get('use_gossip', False)
         self.use_unconfirmed = not config.get('confirmed_only', False)
 

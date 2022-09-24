@@ -118,7 +118,7 @@ class SettingsDialog(QDialog, QtEventListener):
             self.config.set_key('bip21_lightning', bool(x))
         bip21_lightning_cb.stateChanged.connect(on_bip21_lightning)
 
-        use_rbf = bool(self.config.get('use_rbf', True))
+        use_rbf = bool(self.config.get('use_rbf', False))
         use_rbf_cb = QCheckBox(_('Use Replace-By-Fee'))
         use_rbf_cb.setChecked(use_rbf)
         use_rbf_cb.setToolTip(

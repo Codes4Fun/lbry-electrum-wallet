@@ -122,7 +122,7 @@ Builder.load_string('''
 
 class ConfirmTxDialog(FeeSliderDialog, Factory.Popup):
 
-    def __init__(self, app: 'ElectrumWindow', amount, make_tx, on_pay, *, show_final=True):
+    def __init__(self, app: 'ElectrumWindow', amount, make_tx, on_pay, *, show_final=False):
 
         Factory.Popup.__init__(self)
         FeeSliderDialog.__init__(self, app.electrum_config, self.ids.slider)

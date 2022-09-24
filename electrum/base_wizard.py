@@ -697,7 +697,7 @@ class BaseWizard(Logger):
         self.show_xpub_dialog(xpub=xpub, run_next=lambda x: self.run('choose_keystore'))
 
     def choose_seed_type(self):
-        seed_type = 'standard' if self.config.get('nosegwit') else 'segwit'
+        seed_type = 'standard' if self.config.get('nosegwit', True) else 'segwit'
         self.create_seed(seed_type)
 
     def create_seed(self, seed_type):
