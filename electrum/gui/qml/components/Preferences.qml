@@ -12,7 +12,7 @@ Pane {
 
     property string title: qsTr("Preferences")
 
-    property var _baseunits: ['BTC','mBTC','bits','sat']
+    property var _baseunits: ['LBC','mLBC','bits','dew']
 
     Flickable {
         anchors.fill: parent

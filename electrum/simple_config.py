@@ -487,7 +487,7 @@ class SimpleConfig(Logger):
             fee_per_byte = None
         else:
             fee_per_byte = fee_per_kb/1000
-            rate_str = format_fee_satoshis(fee_per_byte) + ' sat/byte'
+            rate_str = format_fee_satoshis(fee_per_byte) + ' dew/byte'
 
         if dyn:
             if mempool:
