@@ -51,7 +51,7 @@ ElDialog {
                 Layout.preferredHeight: constants.iconSizeSmall
                 source: invoice.invoiceType == Invoice.LightningInvoice
                     ? "../../icons/lightning.png"
-                    : "../../icons/bitcoin.png"
+                    : "../../icons/lbc.png"
             }
 
             Label {

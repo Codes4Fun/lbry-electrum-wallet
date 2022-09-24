@@ -277,11 +277,11 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
         self.contacts.fetch_openalias(self.config)
 
         # If the option hasn't been set yet
-        if config.get('check_updates') is None:
-            choice = self.question(title="Electrum - " + _("Enable update check"),
-                                   msg=_("For security reasons we advise that you always use the latest version of Electrum.") + " " +
-                                       _("Would you like to be notified when there is a newer version of Electrum available?"))
-            config.set_key('check_updates', bool(choice), save=True)
+        #if config.get('check_updates') is None:
+        #    choice = self.question(title="Electrum - " + _("Enable update check"),
+        #                           msg=_("For security reasons we advise that you always use the latest version of Electrum.") + " " +
+        #                               _("Would you like to be notified when there is a newer version of Electrum available?"))
+        #    config.set_key('check_updates', bool(choice), save=True)
 
         self._update_check_thread = None
         if config.get('check_updates', False):
@@ -518,7 +518,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, Logger, QtEventListener):
 
     @classmethod
     def get_app_name_and_version_str(cls) -> str:
-        name = "Electrum"
+        name = "LBRY Electrum Wallet"
         if constants.net.TESTNET:
             name += " " + constants.net.NET_NAME.capitalize()
         return f"{name} {ELECTRUM_VERSION}"

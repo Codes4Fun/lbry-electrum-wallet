@@ -274,11 +274,11 @@ class SettingsDialog(QDialog, QtEventListener):
             self.need_restart = True
         colortheme_combo.currentIndexChanged.connect(on_colortheme)
 
-        updatecheck_cb = QCheckBox(_("Automatically check for software updates"))
-        updatecheck_cb.setChecked(bool(self.config.get('check_updates', False)))
-        def on_set_updatecheck(v):
-            self.config.set_key('check_updates', v == Qt.Checked, save=True)
-        updatecheck_cb.stateChanged.connect(on_set_updatecheck)
+        #updatecheck_cb = QCheckBox(_("Automatically check for software updates"))
+        #updatecheck_cb.setChecked(bool(self.config.get('check_updates', False)))
+        #def on_set_updatecheck(v):
+        #    self.config.set_key('check_updates', v == Qt.Checked, save=True)
+        #updatecheck_cb.stateChanged.connect(on_set_updatecheck)
 
         filelogging_cb = QCheckBox(_("Write logs to file"))
         filelogging_cb.setChecked(bool(self.config.get('log_to_file', False)))
@@ -526,7 +526,7 @@ class SettingsDialog(QDialog, QtEventListener):
         fiat_widgets.append((QLabel(_('Show capital gains in history')), hist_capgains_checkbox))
         fiat_widgets.append((QLabel(_('Show Fiat balance for addresses')), fiat_address_checkbox))
         misc_widgets = []
-        misc_widgets.append((updatecheck_cb, None))
+        #misc_widgets.append((updatecheck_cb, None))
         misc_widgets.append((filelogging_cb, None))
         misc_widgets.append((alias_label, self.alias_e))
         misc_widgets.append((qr_label, qr_combo))

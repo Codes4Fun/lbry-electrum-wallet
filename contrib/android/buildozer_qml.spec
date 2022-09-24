@@ -1,10 +1,10 @@
 [app]
 
 # (str) Title of your application
-title = Electrum
+title = LBRY Electrum
 
 # (str) Package name
-package.name = Electrum
+package.name = LBRYElectrum
 
 # (str) Package domain (needed for android/ios packaging)
 package.domain = org.electrum
@@ -130,7 +130,7 @@ android.accept_sdk_license = True
 #android.add_jars = foo.jar,bar.jar,path/to/more/*.jar
 #android.add_jars = lib/android/zbar.jar
 
-android.add_jars = .buildozer/android/platform/*/build/libs_collections/Electrum/jar/*.jar
+android.add_jars = .buildozer/android/platform/*/build/libs_collections/LBRYElectrum/jar/*.jar
 
 
 # (list) List of Java files to add to the android project (can be java or a

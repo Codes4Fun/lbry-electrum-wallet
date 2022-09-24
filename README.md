@@ -1,21 +1,25 @@
-# Electrum - Lightweight Bitcoin client
+# LBRY Electrum Wallet (LEW) - Lightweight LBRY client
+
+LBRY port of the Electrum 4.3.1 Bitcoin client.
+
+There is currently no plan to maintain this port, it is for educational and research purposes, but feel free to submit issues to [here](https://github.com/Codes4Fun/lbry-electrum-wallet/issues)
+
+The focus is primarily android, though a linux desktop is used in testing, and in theory other platforms could work.
+
+I may also use this to test adding special features unique to lbry, such as managing claims.
 
 ```
 Licence: MIT Licence
-Author: Thomas Voegtlin
+Porting: Codes4Fun
+Original Author: Thomas Voegtlin
 Language: Python (>= 3.8)
-Homepage: https://electrum.org/
+Homepage: https://github.com/Codes4Fun/lbry-electrum-wallet
 ```
-
-[![Build Status](https://api.cirrus-ci.com/github/spesmilo/electrum.svg?branch=master)](https://cirrus-ci.com/github/spesmilo/electrum)
-[![Test coverage statistics](https://coveralls.io/repos/github/spesmilo/electrum/badge.svg?branch=master)](https://coveralls.io/github/spesmilo/electrum?branch=master)
-[![Help translate Electrum online](https://d322cqt584bo4o.cloudfront.net/electrum/localized.svg)](https://crowdin.com/project/electrum)
-
 
 ## Getting started
 
 _(If you've come here looking to simply run Electrum,
-[you may download it here](https://electrum.org/#download).)_
+[you may download it here](https://github.com/Codes4Fun/lbry-electrum-wallet/releases).)_
 
 Electrum itself is pure Python, and so are most of the required dependencies,
 but not everything. The following sections describe how to run from source, but here
@@ -87,8 +91,8 @@ and [for macOS](contrib/osx/README_macos.md))_
 
 Check out the code from GitHub:
 ```
-$ git clone https://github.com/spesmilo/electrum.git
-$ cd electrum
+$ git clone https://github.com/Codes4Fun/lbry-electrum-wallet.git
+$ cd lbry-electrum-wallet
 $ git submodule update --init
 ```
 
@@ -108,18 +112,6 @@ Finally, to start Electrum:
 $ ./run_electrum
 ```
 
-### Run tests
-
-Run unit tests with `pytest`:
-```
-$ pytest electrum/tests -v
-```
-
-To run a single file, specify it directly like this:
-```
-$ pytest electrum/tests/test_bitcoin.py -v
-```
-
 ## Creating Binaries
 
 - [Linux (tarball)](contrib/build-linux/sdist/README.md)
@@ -128,16 +120,5 @@ $ pytest electrum/tests/test_bitcoin.py -v
 - [Windows](contrib/build-wine/README.md)
 - [Android](contrib/android/Readme.md)
 
+note: only android has been tested!
 
-## Contributing
-
-Any help testing the software, reporting or fixing bugs, reviewing pull requests
-and recent changes, writing tests, or helping with outstanding issues is very welcome.
-Implementing new features, or improving/refactoring the codebase, is of course
-also welcome, but to avoid wasted effort, especially for larger changes,
-we encourage discussing these on the issue tracker or IRC first.
-
-Besides [GitHub](https://github.com/spesmilo/electrum),
-most communication about Electrum development happens on IRC, in the
-`#electrum` channel on Libera Chat. The easiest way to participate on IRC is
-with the web client, [web.libera.chat](https://web.libera.chat/#electrum).
