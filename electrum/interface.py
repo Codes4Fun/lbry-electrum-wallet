@@ -71,7 +71,7 @@ BUCKET_NAME_OF_ONION_SERVERS = 'onion'
 MAX_INCOMING_MSG_SIZE = 1_000_000  # in bytes
 
 _KNOWN_NETWORK_PROTOCOLS = {'t', 's'}
-PREFERRED_NETWORK_PROTOCOL = 's'
+PREFERRED_NETWORK_PROTOCOL = 't'
 assert PREFERRED_NETWORK_PROTOCOL in _KNOWN_NETWORK_PROTOCOLS
 
 
@@ -613,8 +613,23 @@ class Interface(Logger):
         self.logger.info(f'requesting block header {height} in mode {assert_mode}')
         # use lower timeout as we usually have network.bhi_lock here
         timeout = self.network.get_network_timeout_seconds(NetworkTimeout.Urgent)
-        res = await self.session.send_request('blockchain.block.header', [height], timeout=timeout)
-        return blockchain.deserialize_header(bytes.fromhex(res), height)
+        res = await self.session.send_request('blockchain.block.headers', [height, 1], timeout=timeout)
+
+        assert_dict_contains_field(res, field_name='count')
+        assert_dict_contains_field(res, field_name='hex')
+        assert_dict_contains_field(res, field_name='max')
+        assert_non_negative_integer(res['count'])
+        assert_non_negative_integer(res['max'])
+        assert_hex_str(res['hex'])
+        if len(res['hex']) != HEADER_SIZE * 2 * res['count']:
+            raise RequestCorrupted('inconsistent chunk hex and count')
+        # we never request more than 2016 headers, but we enforce those fit in a single response
+        if res['max'] < 2016:
+            raise RequestCorrupted(f"server uses too low 'max' count for block.headers: {res['max']} < 2016")
+        if res['count'] != 1:
+            raise RequestCorrupted(f"expected {size} headers but only got {res['count']}")
+
+        return blockchain.deserialize_header(bytes.fromhex(res['hex']), height)
 
     async def request_chunk(self, height: int, tip=None, *, can_return_early=False):
         if not is_non_negative_integer(height):
@@ -739,8 +754,11 @@ class Interface(Logger):
         while True:
             item = await header_queue.get()
             raw_header = item[0]
-            height = raw_header['height']
-            header = blockchain.deserialize_header(bfh(raw_header['hex']), height)
+            header = raw_header
+            if 'hex' in raw_header:
+                height = raw_header['height']
+                header = blockchain.deserialize_header(bfh(raw_header['hex']), height)
+            height = header['block_height']
             self.tip_header = header
             self.tip = height
             if self.tip < constants.net.max_checkpoint():

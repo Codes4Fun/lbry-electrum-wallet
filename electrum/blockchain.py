@@ -24,10 +24,11 @@ import os
 import threading
 import time
 from typing import Optional, Dict, Mapping, Sequence
+from hashlib import sha512
 
 from . import util
 from .bitcoin import hash_encode, int_to_hex, rev_hex
-from .crypto import sha256d
+from .crypto import sha256d, ripemd
 from . import constants
 from .util import bfh, bh2u, with_lock
 from .simple_config import SimpleConfig
@@ -36,10 +37,10 @@ from .logging import get_logger, Logger
 
 _logger = get_logger(__name__)
 
-HEADER_SIZE = 80  # bytes
+HEADER_SIZE = 112  # bytes
 
 # see https://github.com/bitcoin/bitcoin/blob/feedb9c84e72e4fff489810a2bbeec09bcda5763/src/chainparams.cpp#L76
-MAX_TARGET = 0x00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff  # compact: 0x1d00ffff
+MAX_TARGET = 0x0000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 
 
 class MissingHeader(Exception):
@@ -52,6 +53,7 @@ def serialize_header(header_dict: dict) -> str:
     s = int_to_hex(header_dict['version'], 4) \
         + rev_hex(header_dict['prev_block_hash']) \
         + rev_hex(header_dict['merkle_root']) \
+        + rev_hex(header_dict['claim_trie_root']) \
         + int_to_hex(int(header_dict['timestamp']), 4) \
         + int_to_hex(int(header_dict['bits']), 4) \
         + int_to_hex(int(header_dict['nonce']), 4)
@@ -67,9 +69,10 @@ def deserialize_header(s: bytes, height: int) -> dict:
     h['version'] = hex_to_int(s[0:4])
     h['prev_block_hash'] = hash_encode(s[4:36])
     h['merkle_root'] = hash_encode(s[36:68])
-    h['timestamp'] = hex_to_int(s[68:72])
-    h['bits'] = hex_to_int(s[72:76])
-    h['nonce'] = hex_to_int(s[76:80])
+    h['claim_trie_root'] = hash_encode(s[68:100])
+    h['timestamp'] = hex_to_int(s[100:104])
+    h['bits'] = hex_to_int(s[104:108])
+    h['nonce'] = hex_to_int(s[108:112])
     h['block_height'] = height
     return h
 
@@ -292,6 +295,15 @@ class Blockchain(Logger):
         p = self.path()
         self._size = os.path.getsize(p)//HEADER_SIZE if os.path.exists(p) else 0
 
+    def header_hash_to_pow_hash(hash):
+        header_hash_bytes = bfh(hash)[::-1]
+        h = sha512(header_hash_bytes).digest()
+        pow_hash = sha256d(
+            ripemd(h[:len(h) // 2]) +
+            ripemd(h[len(h) // 2:])
+        )
+        return int.from_bytes(pow_hash, byteorder='little')
+
     @classmethod
     def verify_header(cls, header: dict, prev_hash: str, target: int, expected_header_hash: str=None) -> None:
         _hash = hash_header(header)
@@ -304,7 +316,7 @@ class Blockchain(Logger):
         bits = cls.target_to_bits(target)
         if bits != header.get('bits'):
             raise Exception("bits mismatch: %s vs %s" % (bits, header.get('bits')))
-        block_hash_as_num = int.from_bytes(bfh(_hash), byteorder='big')
+        block_hash_as_num = cls.header_hash_to_pow_hash(_hash)
         if block_hash_as_num > target:
             raise Exception(f"insufficient proof of work: {block_hash_as_num} vs target {target}")
 
@@ -312,9 +324,14 @@ class Blockchain(Logger):
         num = len(data) // HEADER_SIZE
         start_height = index * 2016
         prev_hash = self.get_hash(start_height - 1)
-        target = self.get_target(index-1)
+        first = last = None
+        if start_height > 0:
+            first = last = self.read_header(start_height - 1)
+        if start_height > 1:
+            first = self.read_header(start_height - 2)
         for i in range(num):
             height = start_height + i
+            target = self._get_target(first, last)
             try:
                 expected_header_hash = self.get_hash(height)
             except MissingHeader:
@@ -323,6 +340,8 @@ class Blockchain(Logger):
             header = deserialize_header(raw_header, index*2016 + i)
             self.verify_header(header, prev_hash, target, expected_header_hash)
             prev_hash = hash_header(header)
+            first = last
+            last = header
 
     @with_lock
     def path(self):
@@ -515,8 +534,33 @@ class Blockchain(Logger):
                 raise MissingHeader(height)
             return hash_header(header)
 
-    def get_target(self, index: int) -> int:
+    def _adjust_target(self, nActualTimespan, target) -> int:
+        nTargetTimespan = 150 # 14 * 24 * 60 * 60
+        nActualTimespan = int((nActualTimespan - nTargetTimespan) / 8) + nTargetTimespan
+        nMinTimespan = nTargetTimespan - nTargetTimespan // 8 # nTargetTimespan // 4
+        nMaxTimespan = nTargetTimespan + nTargetTimespan // 2 # nTargetTimespan * 4
+        nActualTimespan = max(nActualTimespan, nMinTimespan)
+        nActualTimespan = min(nActualTimespan, nMaxTimespan)
+        new_target = min(MAX_TARGET, (target * nActualTimespan) // nTargetTimespan)
+        # not any target can be represented in 32 bits:
+        new_target = self.bits_to_target(self.target_to_bits(new_target))
+        return new_target
+
+    def _get_target(self, first, last) -> int:
+        if constants.net.TESTNET:
+            return 0
+        if last == None:
+            return MAX_TARGET
+        if first == None:
+            first = last
+        bits = last.get('bits')
+        target = self.bits_to_target(bits)
+        nActualTimespan = last.get('timestamp') - first.get('timestamp')
+        return self._adjust_target(nActualTimespan, target)
+
+    def get_target(self, height: int) -> int:
         # compute target from chunk x, used in chunk x+1
+        index = height - 1
         if constants.net.TESTNET:
             return 0
         if index == -1:
@@ -525,20 +569,12 @@ class Blockchain(Logger):
             h, t = self.checkpoints[index]
             return t
         # new target
-        first = self.read_header(index * 2016)
-        last = self.read_header(index * 2016 + 2015)
+        first = last = self.read_header(index)
+        if index > 0:
+            first = self.read_header(index-1)
         if not first or not last:
             raise MissingHeader()
-        bits = last.get('bits')
-        target = self.bits_to_target(bits)
-        nActualTimespan = last.get('timestamp') - first.get('timestamp')
-        nTargetTimespan = 14 * 24 * 60 * 60
-        nActualTimespan = max(nActualTimespan, nTargetTimespan // 4)
-        nActualTimespan = min(nActualTimespan, nTargetTimespan * 4)
-        new_target = min(MAX_TARGET, (target * nActualTimespan) // nTargetTimespan)
-        # not any target can be represented in 32 bits:
-        new_target = self.bits_to_target(self.target_to_bits(new_target))
-        return new_target
+        return self._get_target(first, last)
 
     @classmethod
     def bits_to_target(cls, bits: int) -> int:
@@ -580,8 +616,7 @@ class Blockchain(Logger):
 
     def chainwork_of_header_at_height(self, height: int) -> int:
         """work done by single header at given height"""
-        chunk_idx = height // 2016 - 1
-        target = self.get_target(chunk_idx)
+        target = self.get_target(height)
         work = ((2 ** 256 - target - 1) // (target + 1)) + 1
         return work
 
@@ -593,23 +628,23 @@ class Blockchain(Logger):
             # On testnet/regtest, difficulty works somewhat different.
             # It's out of scope to properly implement that.
             return height
-        last_retarget = height // 2016 * 2016 - 1
+        last_retarget = height - 1
         cached_height = last_retarget
         while _CHAINWORK_CACHE.get(self.get_hash(cached_height)) is None:
             if cached_height <= -1:
                 break
-            cached_height -= 2016
+            cached_height -= 1
         assert cached_height >= -1, cached_height
         running_total = _CHAINWORK_CACHE[self.get_hash(cached_height)]
         while cached_height < last_retarget:
-            cached_height += 2016
+            cached_height += 1
             work_in_single_header = self.chainwork_of_header_at_height(cached_height)
-            work_in_chunk = 2016 * work_in_single_header
+            work_in_chunk = work_in_single_header
             running_total += work_in_chunk
             _CHAINWORK_CACHE[self.get_hash(cached_height)] = running_total
-        cached_height += 2016
+        cached_height += 1
         work_in_single_header = self.chainwork_of_header_at_height(cached_height)
-        work_in_last_partial_chunk = (height % 2016 + 1) * work_in_single_header
+        work_in_last_partial_chunk = work_in_single_header
         return running_total + work_in_last_partial_chunk
 
     def can_connect(self, header: dict, check_height: bool=True) -> bool:
@@ -627,7 +662,7 @@ class Blockchain(Logger):
         if prev_hash != header.get('prev_block_hash'):
             return False
         try:
-            target = self.get_target(height // 2016 - 1)
+            target = self.get_target(height)
         except MissingHeader:
             return False
         try:
